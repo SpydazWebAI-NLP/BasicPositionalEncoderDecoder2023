@@ -1,6 +1,6 @@
 ﻿
 
-# Positional Encoder Decoder
+# Positional Encoder Decoder (VB.NET)
 
 The Positional Encoder Decoder is a Visual Basic .NET class that provides functionality for encoding and decoding tokens and sentences using positional embeddings. It allows you to convert between string tokens and their corresponding embeddings, and vice versa.
 
