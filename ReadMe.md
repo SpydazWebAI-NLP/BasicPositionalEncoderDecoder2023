@@ -87,4 +87,4 @@ This `PositionalEncoderDecoder` class was developed as part of a project to enab
 
 ## Credits
 
-The `PositionalEncoderDecoder` class is developed by [Your Name].
+The `PositionalEncoderDecoder` class is developed by [LEroySamuelDyer@hotmail.co.uk].
