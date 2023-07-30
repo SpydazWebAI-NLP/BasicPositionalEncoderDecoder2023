@@ -1,112 +1,140 @@
-Namespace Basic_NLP
+﻿
+''' <summary>
+''' Encoding:
+''' EncodeTokenStr: Encodes a String token And returns its positional embedding As a list Of doubles.
+'''    EncodeTokenEmbedding: Encodes a token embedding (list Of doubles) And returns its positional embedding As a list Of doubles.
+'''    EncodeSentenceStr: Encodes a list Of String tokens And returns their positional embeddings As a list Of lists Of doubles.
+'''    EncodeSentenceEmbedding: Encodes a list Of token embeddings And returns their positional embeddings As a list Of lists Of doubles.
+'''Decoding:
+'''DecodeTokenStr: Decodes a positional embedding (list Of doubles) And returns the corresponding String token.
+'''    DecodeTokenEmbedding: Decodes a positional embedding (list Of doubles) And returns the corresponding token embedding As a list Of doubles.
+'''    DecodeSentenceStr: Decodes a list Of positional embeddings And returns the corresponding String tokens As a list Of strings.
+'''    DecodeSentenceEmbedding: Decodes a list Of positional embeddings And returns the corresponding token embeddings As a list Of lists Of doubles.
+'''     </summary>
+Public Class PositionalEncoderDecoder
+    Private encodingMatrix As List(Of List(Of Double))
+    Private Vocabulary As New List(Of String)
 
-    Namespace NLP
-        ''' <summary>
-        ''' Encoding:
-        ''' EncodeTokenStr: Encodes a String token And returns its positional embedding As a list Of doubles.
-        '''    EncodeTokenEmbedding: Encodes a token embedding (list Of doubles) And returns its positional embedding As a list Of doubles.
-        '''    EncodeSentenceStr: Encodes a list Of String tokens And returns their positional embeddings As a list Of lists Of doubles.
-        '''    EncodeSentenceEmbedding: Encodes a list Of token embeddings And returns their positional embeddings As a list Of lists Of doubles.
-        '''Decoding:
-        '''DecodeTokenStr: Decodes a positional embedding (list Of doubles) And returns the corresponding String token.
-        '''    DecodeTokenEmbedding: Decodes a positional embedding (list Of doubles) And returns the corresponding token embedding As a list Of doubles.
-        '''    DecodeSentenceStr: Decodes a list Of positional embeddings And returns the corresponding String tokens As a list Of strings.
-        '''    DecodeSentenceEmbedding: Decodes a list Of positional embeddings And returns the corresponding token embeddings As a list Of lists Of doubles.
-        '''     </summary>
-        Public Class PositionalEncoderDecoder
-            Private PositionalEmbedding As New List(Of List(Of Double))
-            Private Vocabulary As New List(Of String)
+    ''' <summary>
+    ''' 
+    ''' </summary>
+    ''' <param name="Dmodel">Embedding Model Size 
+    ''' (1. often best to use the Vocabulary D_model)
+    ''' (2. often a Fixed 512 is used LLM)
+    ''' (3: 64 SMall LLM) </param>
+    ''' <param name="MaxSeqLength">Max Sentence Length</param>
+    ''' <param name="vocabulary">Known VocabularyList</param>
+    Public Sub New(ByRef Dmodel As Integer, MaxSeqLength As Integer, vocabulary As List(Of String))
+        '1. Create Embedding Matrix  Dmodel * MaxSeqLength
+        CreateEmbeddingMatrix(Dmodel, MaxSeqLength)
+        '2. Set Reference Vocabulary
+        Me.Vocabulary = vocabulary
+    End Sub
 
-            Public Sub New(ByRef Dmodel As Integer, MaxSeqLength As Integer, vocabulary As List(Of String))
-                ' Create Learnable Positional Embedding Layer
-                PositionalEmbedding = CreatePositionalEmbedding(Dmodel, MaxSeqLength)
-                ' Set Reference Vocabulary
-                Me.Vocabulary = vocabulary
-            End Sub
+    'Encode
+    Public Function EncodeTokenStr(ByRef nToken As String) As List(Of Double)
+        Dim positionID As Integer = GetTokenIndex(nToken)
+        Return If(positionID <> -1, encodingMatrix(positionID), New List(Of Double)())
+    End Function
 
-            ' Encode
-            Public Function EncodeTokenStr(ByRef nToken As String, position As Integer) As List(Of Double)
-                Dim positionID As Integer = GetTokenIndex(nToken)
-                Dim ipositionalEmbedding As List(Of Double) = PositionalEmbedding(position)
-                Dim encodingVector As List(Of Double) = If(positionID <> -1, ipositionalEmbedding, New List(Of Double))
-                Return encodingVector
-            End Function
-            Public Function EncodeTokenStr(ByRef nToken As String) As List(Of Double)
-                Dim positionID As Integer = GetTokenIndex(nToken)
-                Return If(positionID <> -1, PositionalEmbedding(positionID), New List(Of Double))
-            End Function
+    Public Function EncodeTokenEmbedding(ByRef TokenEmbedding As List(Of Double)) As List(Of Double)
+        Dim positionID As Integer = GetTokenIndex(TokenEmbedding)
+        Return If(positionID <> -1, encodingMatrix(positionID), New List(Of Double)())
+    End Function
+    Public Function EncodeSentenceStr(ByRef Sentence As List(Of String)) As List(Of List(Of Double))
+        Dim EncodedSentence As New List(Of List(Of Double))
+        For Each Word In Sentence
 
-            Public Function EncodeSentenceStr(ByRef Sentence As List(Of String)) As List(Of List(Of Double))
-                Dim EncodedSentence As New List(Of List(Of Double))
-                For i = 0 To Sentence.Count - 1
-                    Dim encodingVector As List(Of Double) = EncodeTokenStr(Sentence(i), i)
-                    EncodedSentence.Add(encodingVector)
-                Next
-                Return EncodedSentence
-            End Function
+            EncodedSentence.Add(EncodeTokenStr(Word))
+        Next
+        Return EncodedSentence
+    End Function
+    Public Function EncodeSentenceEmbedding(ByRef SentenceEmbeddings As List(Of List(Of Double))) As List(Of List(Of Double))
+        Dim EncodedSentence As New List(Of List(Of Double))
+        For Each Word In SentenceEmbeddings
 
-            ' Decode
-            Public Function DecodeSentenceStr(ByRef Sentence As List(Of List(Of Double))) As List(Of String)
-                Dim DecodedSentence As New List(Of String)
-                For Each tokenEncoding In Sentence
-                    Dim decodedToken As String = DecodeTokenStr(tokenEncoding)
-                    DecodedSentence.Add(decodedToken)
-                Next
-                Return DecodedSentence
-            End Function
-            ''' <summary>
-            ''' Used For String Tokens
-            ''' </summary>
-            ''' <param name="PositionalEmbeddingVector"></param>
-            ''' <returns>String Token</returns>
-            Public Function DecodeTokenStr(ByRef PositionalEmbeddingVector As List(Of Double)) As String
-                Dim positionID As Integer = GetPositionID(PositionalEmbeddingVector)
-                Return If(positionID <> -1, Vocabulary(positionID), "")
-            End Function
-            ' Create Learnable Positional Embedding Layer
-            Private Function CreatePositionalEmbedding(Dmodel As Integer, MaxSeqLength As Integer) As List(Of List(Of Double))
-                Dim positionalEmbeddings As New List(Of List(Of Double))
-                Dim rnd As New Random()
+            EncodedSentence.Add(EncodeTokenEmbedding(Word))
+        Next
+        Return EncodedSentence
+    End Function
 
-                For pos As Integer = 0 To MaxSeqLength - 1
-                    Dim embeddingRow As List(Of Double) = New List(Of Double)
+    'Decode
+    Public Function DecodeSentenceStr(ByRef Sentence As List(Of List(Of Double))) As List(Of String)
+        Dim DecodedSentence As New List(Of String)
+        For Each Word In Sentence
 
-                    For i As Integer = 0 To Dmodel - 1
-                        ' Initialize the positional embeddings with random values
-                        embeddingRow.Add(rnd.NextDouble())
-                    Next
+            DecodedSentence.Add(DecodeTokenStr(Word))
+        Next
+        Return DecodedSentence
+    End Function
+    Public Function DecodeSentenceEmbedding(ByRef Sentence As List(Of List(Of Double))) As List(Of List(Of Double))
+        Dim DecodedSentence As New List(Of List(Of Double))
+        For Each Word In Sentence
 
-                    positionalEmbeddings.Add(embeddingRow)
-                Next
+            DecodedSentence.Add(DecodeTokenEmbedding(Word))
+        Next
+        Return DecodedSentence
+    End Function
+    ''' <summary>
+    ''' Used For String Tokens
+    ''' </summary>
+    ''' <param name="PositionalEmbeddingVector"></param>
+    ''' <returns>String Token</returns>
+    Public Function DecodeTokenStr(ByRef PositionalEmbeddingVector As List(Of Double)) As String
+        Dim positionID As Integer = GetPositionID(PositionalEmbeddingVector)
+        Return If(positionID <> -1, Vocabulary(positionID), "")
+    End Function
+    ''' <summary>
+    ''' USed to decode WOrdEMbedding Vectors instead of strings
+    ''' </summary>
+    ''' <param name="PositionalEmbeddingVector"></param>
+    ''' <returns>WOrdEMbedding Vector</returns>
+    Public Function DecodeTokenEmbedding(ByRef PositionalEmbeddingVector As List(Of Double)) As List(Of Double)
+        Dim positionID As Integer = GetPositionID(PositionalEmbeddingVector)
+        Return If(positionID <> -1, encodingMatrix(positionID), New List(Of Double)())
+    End Function
 
-                Return positionalEmbeddings
-            End Function
 
-            Private Function GetTokenIndex(PositionalEncoding As List(Of Double)) As Integer
 
-                For i As Integer = 0 To PositionalEmbedding.Count - 1
-                    If PositionalEncoding.SequenceEqual(PositionalEmbedding(i)) Then
-                        Return i
-                    End If
-                Next
+    Private Sub CreateEmbeddingMatrix(ByRef WidthLength As Integer, HeightLength As Integer)
+        encodingMatrix = New List(Of List(Of Double))
+        ' Create the encoding matrix
+        For pos As Integer = 0 To HeightLength - 1
+            Dim encodingRow As List(Of Double) = New List(Of Double)()
 
-                Return -1 ' Token not found
-            End Function
-            Private Function GetTokenIndex(token As String) As Integer
+            For i As Integer = 0 To WidthLength - 1
+                Dim angle As Double = pos / Math.Pow(10000, (2 * i) / WidthLength)
+                encodingRow.Add(Math.Sin(angle))
+                encodingRow.Add(Math.Cos(angle))
+            Next
 
-                Return Vocabulary.IndexOf(token)
-            End Function
-            Private Function GetPositionID(PositionalEmbeddingVector As List(Of Double)) As Integer
-                For i As Integer = 0 To PositionalEmbedding.Count - 1
-                    If PositionalEmbeddingVector.SequenceEqual(PositionalEmbedding(i)) Then
-                        Return i
-                    End If
-                Next
+            encodingMatrix.Add(encodingRow)
+        Next
+    End Sub
+    'GetPos
+    Private Function GetPositionID(PositionalEmbeddingVector As List(Of Double)) As Integer
+        For i As Integer = 0 To encodingMatrix.Count - 1
+            If PositionalEmbeddingVector.SequenceEqual(encodingMatrix(i)) Then
+                Return i
+            End If
+        Next
 
-                Return -1 ' Position ID not found
-            End Function
+        Return -1 ' Position ID not found
+    End Function
+    Private Function GetTokenIndex(PositionalEncoding As List(Of Double)) As Integer
 
-        End Class
+        For i As Integer = 0 To encodingMatrix.Count - 1
+            If PositionalEncoding.SequenceEqual(encodingMatrix(i)) Then
+                Return i
+            End If
+        Next
 
-    End Namespace
-End Namespace
+        Return -1 ' Token not found
+    End Function
+    Private Function GetTokenIndex(token As String) As Integer
+
+        Return Vocabulary.IndexOf(token)
+    End Function
+End Class
+
+
